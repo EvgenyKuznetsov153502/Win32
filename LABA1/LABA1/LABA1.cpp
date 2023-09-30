@@ -1,10 +1,9 @@
-﻿// LABA1.cpp : Определяет точку входа для приложения.
-//
-
-#include "framework.h"
+﻿#include "framework.h"
 #include "LABA1.h"
 #include <string>
 #include <commdlg.h>
+#include <iostream>
+#include <fstream>
 
 #define MAX_LOADSTRING 100
 
@@ -12,21 +11,21 @@
 HINSTANCE hInst;                                // текущий экземпляр
 WCHAR szTitle[MAX_LOADSTRING];                  // Текст строки заголовка
 WCHAR szWindowClass[MAX_LOADSTRING];            // имя класса главного окна
-HWND textEdit;
+HWND textEdit;									// для хранения дескриптора текстового поля в интерфейсе
 
 // Отправить объявления функций, включенных в этот модуль кода:
-ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE, int);
-LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+ATOM                MyRegisterClass(HINSTANCE hInstance); // будет регистрировать класс окна
+BOOL                InitInstance(HINSTANCE, int); // будет инициализировать экземпляр приложения.
+LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM); // обработка сообщений для главного окна
+INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);  // обрабатывать сообщения для диалогового окна "О программе".
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-	_In_opt_ HINSTANCE hPrevInstance,
-	_In_ LPWSTR    lpCmdLine,
-	_In_ int       nCmdShow)
+	_In_opt_ HINSTANCE hPrevInstance, //предыдущий экземпляр 
+	_In_ LPWSTR    lpCmdLine, // аргументы командной строки
+	_In_ int       nCmdShow) // флаги отображения окна
 {
-	UNREFERENCED_PARAMETER(hPrevInstance);
-	UNREFERENCED_PARAMETER(lpCmdLine);
+	UNREFERENCED_PARAMETER(hPrevInstance); //предназначены для предотвращения
+	UNREFERENCED_PARAMETER(lpCmdLine); //предупреждений о неиспользуемых параметрах функции.
 
 	// TODO: Разместите код здесь.
 
@@ -36,14 +35,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	MyRegisterClass(hInstance);
 
 	// Выполнить инициализацию приложения:
-	if (!InitInstance(hInstance, nCmdShow))
+	if (!InitInstance(hInstance, nCmdShow)) // создания и отображения главного окна приложения
 	{
 		return FALSE;
 	}
 
 	HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_LABA1));
 
-	MSG msg;
+	MSG msg; // хранение сообщений
 
 	// Цикл основного сообщения:
 	while (GetMessage(&msg, nullptr, 0, 0))
@@ -58,44 +57,36 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	return (int)msg.wParam;
 }
 
-
-
-//
 //  ФУНКЦИЯ: MyRegisterClass()
-//
 //  ЦЕЛЬ: Регистрирует класс окна.
-//
+
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
-	WNDCLASSEXW wcex;
+	WNDCLASSEXW wcex; //  информация о классе окна
 
 	wcex.cbSize = sizeof(WNDCLASSEX);
 
-	wcex.style = CS_HREDRAW | CS_VREDRAW;
-	wcex.lpfnWndProc = WndProc;
-	wcex.cbClsExtra = 0;
-	wcex.cbWndExtra = 0;
-	wcex.hInstance = hInstance;
-	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_LABA1));
-	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
-	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_LABA1);
-	wcex.lpszClassName = szWindowClass;
-	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+	wcex.style = CS_HREDRAW | CS_VREDRAW; //окно должно быть перерисовано, если его горизонтальный и вертикальный размер изменяется.
+	wcex.lpfnWndProc = WndProc; //оконная процедуру, которая будет обрабатывать сообщения для окна
+	wcex.cbClsExtra = 0; //  Резервированные поля для
+	wcex.cbWndExtra = 0; // дополнительных данных класса и окна
+	wcex.hInstance = hInstance; // Установка экземпляра приложения, полученного как параметр функции
+	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_LABA1)); //значок приложения в окне
+	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW); // курсор мыши
+	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1); // фон окна
+	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_LABA1); // меню для окна
+	wcex.lpszClassName = szWindowClass; // именя класса окна
+	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL)); // маленький значок приложения
 
-	return RegisterClassExW(&wcex);
+	return RegisterClassExW(&wcex); // Регистрация класса окна и возврат атома класса
 }
 
-//
 //   ФУНКЦИЯ: InitInstance(HINSTANCE, int)
-//
 //   ЦЕЛЬ: Сохраняет маркер экземпляра и создает главное окно
-//
 //   КОММЕНТАРИИ:
-//
 //        В этой функции маркер экземпляра сохраняется в глобальной переменной, а также
 //        создается и выводится главное окно программы.
-//
+
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance; // Сохранить маркер экземпляра в глобальной переменной
@@ -103,7 +94,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	HWND hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT, 500, 500, nullptr, nullptr, hInstance, nullptr);
 
-	if (!hWnd)
+	if (!hWnd)  // Проверка, было ли успешно создано окно
 	{
 		return FALSE;
 	}
@@ -130,40 +121,66 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_CREATE:
 	{
-		textEdit = CreateWindow(L"EDIT", L"Sasha krasivi", WS_BORDER | WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_LEFT |
+		textEdit = CreateWindow(L"EDIT", L"Текстовый редактор", WS_BORDER | WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_LEFT |
 			ES_MULTILINE | ES_AUTOVSCROLL,
-			10, 10, 400, 400, hWnd, nullptr, nullptr, nullptr);
+			10, 10, 460, 420, hWnd, nullptr, nullptr, nullptr);
 	}
 	break;
 	case WM_COMMAND:
 	{
-		int wmId = LOWORD(wParam);
-		// Разобрать выбор в меню:
+		int wmId = LOWORD(wParam); // Извлечение идентификатора команды 
+		// выбор в меню:
 		switch (wmId)
 		{
 		case IDM_ABOUT:
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 			break;
 		case IDM_EXIT:
-			DestroyWindow(hWnd);
+			if (MessageBox(hWnd, L"Вы действительно хотите закрыть окно?", L"Выход", MB_OKCANCEL) == IDOK) {
+				DestroyWindow(hWnd);
+			}
+			return 0;
 			break;
 		case ID_32772: // SAVE
 		{
-			static std::wstring fileName(MAX_PATH, L'\0');
-			OPENFILENAME ofn{};
-			ofn.lStructSize = sizeof(OPENFILENAME);
-			ofn.hwndOwner = hWnd;
-			ofn.lpstrFilter = L"Text Files (*.txt)\0*.txt\0";
-			ofn.lpstrFile = &fileName[0];
-			ofn.nMaxFile = MAX_PATH;
-			ofn.Flags = OFN_OVERWRITEPROMPT;
+			static std::wstring fileName(MAX_PATH, L'\0'); // хранение имени файла
+			OPENFILENAME ofn{}; // структура для настройки диалогового окна сохранения файла
+			ofn.lStructSize = sizeof(OPENFILENAME); // размер структуры
+			ofn.hwndOwner = hWnd; // дескриптор окна-владельца (главного окна приложения)
+			ofn.lpstrFilter = L"Text Files (*.txt)\0*.txt\0"; // фильтр позволяет выбирать только файлы с расширением txt
+			ofn.lpstrFile = &fileName[0]; // указатель на строку, в которую будет сохранено имя выбранного файла.
+			ofn.nMaxFile = MAX_PATH; //  максимальная длина имени файла
+			ofn.Flags = OFN_OVERWRITEPROMPT; // флаг на перезапись файла (если файл с таким именем существует)
+			
 
 			if (!GetSaveFileName(&ofn)) {
-				//TODO: error
+				MessageBox(hWnd, L"Не удалось получить имя файла", L"Ошибка", MB_ICONINFORMATION);
 				return 0;
 			}
-			//TODO: save in file
+
+			// открытие файла для записи
+			std::wofstream file(fileName, std::ios::out | std::ios::binary);
+
+			if (file.is_open()) {
+				//Получения текста из элемента textEdit
+				int textLength = GetWindowTextLength(textEdit);
+				std::wstring text;
+				text.resize(textLength + 1);
+				file.imbue(std::locale("ru_RU.utf8"));
+				GetWindowText(textEdit, &text[0], textLength + 1);
+
+				// Запись текста в файл
+				file << text;
+				file.close();
+
+				MessageBox(hWnd, L"Данные успешно сохранены!", L"Сохранение", MB_OK);
+			}
+			else {
+				// когда не удалось открыть файл
+				MessageBox(hWnd, L"Не удалось открыть файл для записи!", L"Ошибка", MB_OK | MB_ICONERROR);
+			}
 		}
+			break;
 		case ID_32771: // OPEN
 		{
 			static std::wstring fileName(MAX_PATH, L'\0');
@@ -181,10 +198,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			//TODO: read from file and write to textEdit
 		}
+		break;
 		default:
 			return DefWindowProc(hWnd, message, wParam, lParam);
 		}
 	}
+	break;
+	case WM_CLOSE:
+		if (MessageBox(hWnd, L"Вы действительно хотите закрыть окно?", L"Выход", MB_OKCANCEL) == IDOK) {
+			DestroyWindow(hWnd);
+		}
+		return 0;
 	break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
