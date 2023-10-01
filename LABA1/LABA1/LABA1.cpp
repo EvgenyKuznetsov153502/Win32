@@ -4,6 +4,7 @@
 #include <commdlg.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 
 #define MAX_LOADSTRING 100
 
@@ -147,7 +148,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			OPENFILENAME ofn{}; // структура для настройки диалогового окна сохранения файла
 			ofn.lStructSize = sizeof(OPENFILENAME); // размер структуры
 			ofn.hwndOwner = hWnd; // дескриптор окна-владельца (главного окна приложения)
-			ofn.lpstrFilter = L"Text Files (*.txt)\0*.txt\0"; // фильтр позволяет выбирать только файлы с расширением txt
+			ofn.lpstrFilter = L"Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
 			ofn.lpstrFile = &fileName[0]; // указатель на строку, в которую будет сохранено имя выбранного файла.
 			ofn.nMaxFile = MAX_PATH; //  максимальная длина имени файла
 			ofn.Flags = OFN_OVERWRITEPROMPT; // флаг на перезапись файла (если файл с таким именем существует)
@@ -159,7 +160,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 
 			// открытие файла для записи
-			std::wofstream file(fileName, std::ios::out | std::ios::binary);
+			std::wofstream file(fileName, std::ios::binary);
 
 			if (file.is_open()) {
 				//Получения текста из элемента textEdit
@@ -176,27 +177,44 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				MessageBox(hWnd, L"Данные успешно сохранены!", L"Сохранение", MB_OK);
 			}
 			else {
-				// когда не удалось открыть файл
 				MessageBox(hWnd, L"Не удалось открыть файл для записи!", L"Ошибка", MB_OK | MB_ICONERROR);
 			}
 		}
 			break;
 		case ID_32771: // OPEN
-		{
+		{	
 			static std::wstring fileName(MAX_PATH, L'\0');
 			OPENFILENAME ofn{};
 			ofn.lStructSize = sizeof(OPENFILENAME);
 			ofn.hwndOwner = hWnd;
-			ofn.lpstrFilter = L"Text Files (*.txt)\0*.txt\0";
+			ofn.lpstrFilter = L"Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
 			ofn.lpstrFile = &fileName[0];
 			ofn.nMaxFile = MAX_PATH;
-			ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
+			ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY; 
+			// флаги: выбор существующего файла и пути (2й флаг) и скрыть файлы только для чтения 
 
-			if (!(&ofn)) {
-				// TODO: MessageBox
+			if (!GetOpenFileName(&ofn)) {
+				MessageBox(hWnd, L"Не удалось получить имя файла", L"Ошибка", MB_ICONINFORMATION);
 				return 0;
 			}
-			//TODO: read from file and write to textEdit
+
+			std::wifstream file(fileName, std::ios::binary);
+			std::wstringstream buf;
+			std::wstring file_content;
+
+			if (file.is_open()) {
+				int textLength = GetWindowTextLength(textEdit);
+				std::wstring text;
+				text.resize(textLength + 1);
+				file.imbue(std::locale("ru_RU.utf8"));
+				GetWindowText(textEdit, &text[0], textLength + 1);
+
+				buf << file.rdbuf();
+				file.close();
+				file_content = buf.str();
+
+				SetWindowTextW(textEdit, file_content.c_str());
+			}
 		}
 		break;
 		default:
