@@ -5,16 +5,21 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <commctrl.h>
+
 
 #define MAX_LOADSTRING 100
+#define IDC_TABCONTROL 1101
+#define IDC_EDIT_TAB_START 2000
 
 // Глобальные переменные:
 HINSTANCE hInst;                                // текущий экземпляр
 WCHAR szTitle[MAX_LOADSTRING];                  // Текст строки заголовка
 WCHAR szWindowClass[MAX_LOADSTRING];            // имя класса главного окна
-HWND textEdit;									// для хранения дескриптора текстового поля в интерфейсе
+// старое HWND textEdit;									// для хранения дескриптора текстового поля в интерфейсе
+HWND tabControl;	                            // дескриптер вкладок в интерфейсе  				
+int tabIndexCounter = 0;							// счетчик вкладок 
 
-// Отправить объявления функций, включенных в этот модуль кода:
 ATOM                MyRegisterClass(HINSTANCE hInstance); // будет регистрировать класс окна
 BOOL                InitInstance(HINSTANCE, int); // будет инициализировать экземпляр приложения.
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM); // обработка сообщений для главного окна
@@ -27,8 +32,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
 	UNREFERENCED_PARAMETER(hPrevInstance); //предназначены для предотвращения
 	UNREFERENCED_PARAMETER(lpCmdLine); //предупреждений о неиспользуемых параметрах функции.
-
-	// TODO: Разместите код здесь.
 
 	// Инициализация глобальных строк
 	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -106,7 +109,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	return TRUE;
 }
 
-//
+
 //  ФУНКЦИЯ: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
 //  ЦЕЛЬ: Обрабатывает сообщения в главном окне.
@@ -115,110 +118,198 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //  WM_PAINT    - Отрисовка главного окна
 //  WM_DESTROY  - отправить сообщение о выходе и вернуться
 //
-//
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
 	case WM_CREATE:
 	{
-		textEdit = CreateWindow(L"EDIT", L"Текстовый редактор", WS_BORDER | WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_LEFT |
-			ES_MULTILINE | ES_AUTOVSCROLL,
-			10, 10, 460, 420, hWnd, nullptr, nullptr, nullptr);
+		// старое 
+		//textEdit = CreateWindow(L"EDIT", L"Текстовый редактор", WS_BORDER | WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_LEFT |
+			//ES_MULTILINE | ES_AUTOVSCROLL,
+			//10, 10, 460, 420, hWnd, nullptr, nullptr, nullptr);
+		tabControl = CreateWindowEx(0, WC_TABCONTROL, L"", WS_CHILD | WS_VISIBLE, 
+			10, 10, 460, 30, hWnd, (HMENU)IDC_TABCONTROL, (HINSTANCE)GetWindowLong(hWnd, GWLP_HINSTANCE), nullptr);
+		// (HINSTANCE)GetWindowLong(hWnd, GWLP_HINSTANCE)
+		if (tabControl)
+		{
+			TCITEM tie;
+			tie.mask = TCIF_TEXT;
+			tabIndexCounter++;
+
+			// Создайте первую вкладку
+			tie.pszText = (LPWSTR)L"Tab 1";
+			TabCtrl_InsertItem(tabControl, 0, &tie);
+
+			// Создайте первое текстовое поле для первой вкладки
+			CreateWindow(L"EDIT", L"", WS_BORDER | WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_LEFT |
+				ES_MULTILINE | ES_AUTOVSCROLL, 10, 50, 460, 380, hWnd, (HMENU)IDC_EDIT_TAB_START, hInst, nullptr);
+		}
+
+
 	}
 	break;
+	case WM_NOTIFY:
+	{
+		NMHDR* pnmhdr = (NMHDR*)lParam;
+		if (pnmhdr->code == TCN_SELCHANGE)
+		{
+			int currentTab = TabCtrl_GetCurSel(tabControl);
+			
+
+			// Скрыть все текстовые поля
+			for (int i = 0; i < tabIndexCounter; i++)
+			{
+				ShowWindow(GetDlgItem(hWnd, IDC_EDIT_TAB_START + i), SW_HIDE);
+			}
+
+			// Показать текстовое поле для выбранной вкладки
+			ShowWindow(GetDlgItem(hWnd, IDC_EDIT_TAB_START + currentTab), SW_SHOW);
+			
+		}
+		break;
+	}
 	case WM_COMMAND:
 	{
 		int wmId = LOWORD(wParam); // Извлечение идентификатора команды 
-		// выбор в меню:
-		switch (wmId)
-		{
-		case IDM_ABOUT:
-			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-			break;
-		case IDM_EXIT:
-			if (MessageBox(hWnd, L"Вы действительно хотите закрыть окно?", L"Выход", MB_OKCANCEL) == IDOK) {
-				DestroyWindow(hWnd);
-			}
-			return 0;
-			break;
-		case ID_32772: // SAVE
-		{
-			static std::wstring fileName(MAX_PATH, L'\0'); // хранение имени файла
-			OPENFILENAME ofn{}; // структура для настройки диалогового окна сохранения файла
-			ofn.lStructSize = sizeof(OPENFILENAME); // размер структуры
-			ofn.hwndOwner = hWnd; // дескриптор окна-владельца (главного окна приложения)
-			ofn.lpstrFilter = L"Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
-			ofn.lpstrFile = &fileName[0]; // указатель на строку, в которую будет сохранено имя выбранного файла.
-			ofn.nMaxFile = MAX_PATH; //  максимальная длина имени файла
-			ofn.Flags = OFN_OVERWRITEPROMPT; // флаг на перезапись файла (если файл с таким именем существует)
-			
+		int wmEvent = HIWORD(wParam); 
 
-			if (!GetSaveFileName(&ofn)) {
-				MessageBox(hWnd, L"Не удалось получить имя файла", L"Ошибка", MB_ICONINFORMATION);
-				return 0;
+		
+		if (wmId == IDC_TABCONTROL) {
+			// Обработка событий переключения вкладок
+			int currentTab = TabCtrl_GetCurSel(tabControl);
+
+			// Скрыть все текстовые поля
+			for (int i = 0; i < tabIndexCounter; i++)
+			{
+				ShowWindow(GetDlgItem(hWnd, IDC_EDIT_TAB_START + i), SW_HIDE);
 			}
 
-			// открытие файла для записи
-			std::wofstream file(fileName, std::ios::binary);
+			// Показать текстовое поле для выбранной вкладки
+			ShowWindow(GetDlgItem(hWnd, IDC_EDIT_TAB_START + currentTab), SW_SHOW);
 
-			if (file.is_open()) {
-				//Получения текста из элемента textEdit
-				int textLength = GetWindowTextLength(textEdit);
-				std::wstring text;
-				text.resize(textLength + 1);
-				file.imbue(std::locale("ru_RU.utf8"));
-				GetWindowText(textEdit, &text[0], textLength + 1);
-
-				// Запись текста в файл
-				file << text;
-				file.close();
-
-				MessageBox(hWnd, L"Данные успешно сохранены!", L"Сохранение", MB_OK);
-			}
-			else {
-				MessageBox(hWnd, L"Не удалось открыть файл для записи!", L"Ошибка", MB_OK | MB_ICONERROR);
-			}
 		}
-			break;
-		case ID_32771: // OPEN
-		{	
-			static std::wstring fileName(MAX_PATH, L'\0');
-			OPENFILENAME ofn{};
-			ofn.lStructSize = sizeof(OPENFILENAME);
-			ofn.hwndOwner = hWnd;
-			ofn.lpstrFilter = L"Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
-			ofn.lpstrFile = &fileName[0];
-			ofn.nMaxFile = MAX_PATH;
-			ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY; 
-			// флаги: выбор существующего файла и пути (2й флаг) и скрыть файлы только для чтения 
-
-			if (!GetOpenFileName(&ofn)) {
-				MessageBox(hWnd, L"Не удалось получить имя файла", L"Ошибка", MB_ICONINFORMATION);
+		else
+		{
+			switch (wmId)
+			{
+			case IDM_ABOUT:
+				DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+				break;
+			case IDM_EXIT:
+				if (MessageBox(hWnd, L"Вы действительно хотите закрыть окно?", L"Выход", MB_OKCANCEL) == IDOK) {
+					DestroyWindow(hWnd);
+				}
 				return 0;
+				break;
+			case ID_32772: // SAVE
+			{
+				int currentTab = TabCtrl_GetCurSel(tabControl);
+				int controlId = IDC_EDIT_TAB_START + currentTab;
+				HWND textEdit = GetDlgItem(hWnd, controlId);
+
+				static std::wstring fileName(MAX_PATH, L'\0'); // хранение имени файла
+				OPENFILENAME ofn{}; // структура для настройки диалогового окна сохранения файла
+				ofn.lStructSize = sizeof(OPENFILENAME); // размер структуры
+				ofn.hwndOwner = hWnd; // дескриптор окна-владельца (главного окна приложения)
+				ofn.lpstrFilter = L"Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
+				ofn.lpstrFile = &fileName[0]; // указатель на строку, в которую будет сохранено имя выбранного файла.
+				ofn.nMaxFile = MAX_PATH; //  максимальная длина имени файла
+				ofn.Flags = OFN_OVERWRITEPROMPT; // флаг на перезапись файла (если файл с таким именем существует)
+
+
+				if (!GetSaveFileName(&ofn)) {
+					MessageBox(hWnd, L"Не удалось получить имя файла", L"Ошибка", MB_ICONINFORMATION);
+					return 0;
+				}
+
+				// открытие файла для записи
+				std::wofstream file(fileName, std::ios::binary);
+
+				if (file.is_open()) {
+					//Получения текста из элемента textEdit
+					int textLength = GetWindowTextLength(textEdit);
+					std::wstring text;
+					text.resize(textLength + 1);
+					file.imbue(std::locale("ru_RU.utf8"));
+					GetWindowText(textEdit, &text[0], textLength + 1);
+
+					// Запись текста в файл
+					file << text;
+					file.close();
+
+					MessageBox(hWnd, L"Данные успешно сохранены!", L"Сохранение", MB_OK);
+				}
+				else {
+					MessageBox(hWnd, L"Не удалось открыть файл для записи!", L"Ошибка", MB_OK | MB_ICONERROR);
+				}
+			}
+			break;
+			case ID_32771: // OPEN
+			{
+				int currentTab = TabCtrl_GetCurSel(tabControl);
+				int controlId = IDC_EDIT_TAB_START + currentTab;
+				HWND textEdit = GetDlgItem(hWnd, controlId);
+
+				static std::wstring fileName(MAX_PATH, L'\0');
+				OPENFILENAME ofn{};
+				ofn.lStructSize = sizeof(OPENFILENAME);
+				ofn.hwndOwner = hWnd;
+				ofn.lpstrFilter = L"Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
+				ofn.lpstrFile = &fileName[0];
+				ofn.nMaxFile = MAX_PATH;
+				ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
+				// флаги: выбор существующего файла и пути (2й флаг) и скрыть файлы только для чтения 
+
+				if (!GetOpenFileName(&ofn)) {
+					MessageBox(hWnd, L"Не удалось получить имя файла", L"Ошибка", MB_ICONINFORMATION);
+					return 0;
+				}
+
+				std::wifstream file(fileName, std::ios::binary);
+				std::wstringstream buf;
+				std::wstring file_content;
+
+				if (file.is_open()) {
+					int textLength = GetWindowTextLength(textEdit);
+					std::wstring text;
+					text.resize(textLength + 1);
+					file.imbue(std::locale("ru_RU.utf8"));
+					GetWindowText(textEdit, &text[0], textLength + 1);
+
+					buf << file.rdbuf();
+					file.close();
+					file_content = buf.str();
+
+					SetWindowTextW(textEdit, file_content.c_str());
+				}
+			}
+			break;
+			case ID_32775:  // new tab
+			{
+				// Добавление новой вкладки
+					TCITEM tie;
+					tie.mask = TCIF_TEXT;
+					tabIndexCounter++;
+
+					WCHAR tabText[64];
+					swprintf_s(tabText, L"Tab %d", tabIndexCounter);
+					tie.pszText = tabText;
+					TabCtrl_InsertItem(tabControl, tabIndexCounter - 1, &tie); // вставка новой вкладки
+
+					// Создание нового текстового поля для новой вкладки
+					CreateWindow(L"EDIT", L"", WS_BORDER | WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_LEFT |
+						ES_MULTILINE | ES_AUTOVSCROLL, 10, 50, 460, 380, hWnd,
+						(HMENU)(IDC_EDIT_TAB_START + tabIndexCounter - 1), hInst, NULL);
+					// Переключение на новую вкладку
+					TabCtrl_SetCurSel(tabControl, tabIndexCounter - 1);
+					SendMessage(hWnd, WM_COMMAND, MAKEWPARAM(IDC_TABCONTROL, 0), 0);
+			}
+			break;
+			default:
+				return DefWindowProc(hWnd, message, wParam, lParam);
 			}
 
-			std::wifstream file(fileName, std::ios::binary);
-			std::wstringstream buf;
-			std::wstring file_content;
-
-			if (file.is_open()) {
-				int textLength = GetWindowTextLength(textEdit);
-				std::wstring text;
-				text.resize(textLength + 1);
-				file.imbue(std::locale("ru_RU.utf8"));
-				GetWindowText(textEdit, &text[0], textLength + 1);
-
-				buf << file.rdbuf();
-				file.close();
-				file_content = buf.str();
-
-				SetWindowTextW(textEdit, file_content.c_str());
-			}
-		}
-		break;
-		default:
-			return DefWindowProc(hWnd, message, wParam, lParam);
 		}
 	}
 	break;
