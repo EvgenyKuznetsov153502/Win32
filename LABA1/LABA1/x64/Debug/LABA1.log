@@ -1,4 +1,4 @@
 ﻿  LABA1.cpp
-D:\Win32\Win32\LABA1\LABA1\LABA1.cpp(132,50): warning C4312: приведение типов: преобразование из "LONG" в "HINSTANCE" большего размера
-D:\Win32\Win32\LABA1\LABA1\LABA1.cpp(301,6): warning C4312: приведение типов: преобразование из "int" в "HMENU" большего размера
+D:\Win32\Win32\LABA1\LABA1\LABA1.cpp(126,50): warning C4312: приведение типов: преобразование из "LONG" в "HINSTANCE" большего размера
+D:\Win32\Win32\LABA1\LABA1\LABA1.cpp(292,6): warning C4312: приведение типов: преобразование из "int" в "HMENU" большего размера
   LABA1.vcxproj -> D:\Win32\Win32\LABA1\x64\Debug\LABA1.exe

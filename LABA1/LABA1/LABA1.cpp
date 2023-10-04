@@ -1,4 +1,5 @@
 ﻿#include "framework.h"
+#include <Richedit.h>
 #include "LABA1.h"
 #include <string>
 #include <commdlg.h>
@@ -6,6 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include <commctrl.h>
+
 
 
 #define MAX_LOADSTRING 100
@@ -16,14 +18,13 @@
 HINSTANCE hInst;                                // текущий экземпляр
 WCHAR szTitle[MAX_LOADSTRING];                  // Текст строки заголовка
 WCHAR szWindowClass[MAX_LOADSTRING];            // имя класса главного окна
-// старое HWND textEdit;									// для хранения дескриптора текстового поля в интерфейсе
 HWND tabControl;	                            // дескриптер вкладок в интерфейсе  				
-int tabIndexCounter = 0;							// счетчик вкладок 
+int tabIndexCounter = 0;						// счетчик вкладок 
 
-ATOM                MyRegisterClass(HINSTANCE hInstance); // будет регистрировать класс окна
-BOOL                InitInstance(HINSTANCE, int); // будет инициализировать экземпляр приложения.
-LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM); // обработка сообщений для главного окна
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);  // обрабатывать сообщения для диалогового окна "О программе".
+ATOM                MyRegisterClass(HINSTANCE hInstance);	// будет регистрировать класс окна
+BOOL                InitInstance(HINSTANCE, int);			// будет инициализировать экземпляр приложения.
+LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);	// обработка сообщений для главного окна
+INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);		// обрабатывать сообщения для диалогового окна "О программе".
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance, //предыдущий экземпляр 
@@ -32,6 +33,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
 	UNREFERENCED_PARAMETER(hPrevInstance); //предназначены для предотвращения
 	UNREFERENCED_PARAMETER(lpCmdLine); //предупреждений о неиспользуемых параметрах функции.
+	LoadLibrary(L"Msftedit.dll");
 
 	// Инициализация глобальных строк
 	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -71,6 +73,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.cbSize = sizeof(WNDCLASSEX);
 
 	wcex.style = CS_HREDRAW | CS_VREDRAW; //окно должно быть перерисовано, если его горизонтальный и вертикальный размер изменяется.
+	wcex.hbrBackground = CreateSolidBrush(0x00FFFFFF);
 	wcex.lpfnWndProc = WndProc; //оконная процедуру, которая будет обрабатывать сообщения для окна
 	wcex.cbClsExtra = 0; //  Резервированные поля для
 	wcex.cbWndExtra = 0; // дополнительных данных класса и окна
@@ -81,6 +84,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_LABA1); // меню для окна
 	wcex.lpszClassName = szWindowClass; // именя класса окна
 	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL)); // маленький значок приложения
+
 
 	return RegisterClassExW(&wcex); // Регистрация класса окна и возврат атома класса
 }
@@ -110,27 +114,17 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 }
 
 
-//  ФУНКЦИЯ: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  ЦЕЛЬ: Обрабатывает сообщения в главном окне.
-//
-//  WM_COMMAND  - обработать меню приложения
-//  WM_PAINT    - Отрисовка главного окна
-//  WM_DESTROY  - отправить сообщение о выходе и вернуться
-//
+// Обрабатывает сообщения в главном окне.
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
 	case WM_CREATE:
 	{
-		// старое 
-		//textEdit = CreateWindow(L"EDIT", L"Текстовый редактор", WS_BORDER | WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_LEFT |
-			//ES_MULTILINE | ES_AUTOVSCROLL,
-			//10, 10, 460, 420, hWnd, nullptr, nullptr, nullptr);
 		tabControl = CreateWindowEx(0, WC_TABCONTROL, L"", WS_CHILD | WS_VISIBLE, 
 			10, 10, 460, 30, hWnd, (HMENU)IDC_TABCONTROL, (HINSTANCE)GetWindowLong(hWnd, GWLP_HINSTANCE), nullptr);
-		// (HINSTANCE)GetWindowLong(hWnd, GWLP_HINSTANCE)
+
 		if (tabControl)
 		{
 			TCITEM tie;
@@ -140,23 +134,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			// Создайте первую вкладку
 			tie.pszText = (LPWSTR)L"Tab 1";
 			TabCtrl_InsertItem(tabControl, 0, &tie);
-
-			// Создайте первое текстовое поле для первой вкладки
-			CreateWindow(L"EDIT", L"", WS_BORDER | WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_LEFT |
-				ES_MULTILINE | ES_AUTOVSCROLL, 10, 50, 460, 380, hWnd, (HMENU)IDC_EDIT_TAB_START, hInst, nullptr);
+	
+			CreateWindow(
+				L"RICHEDIT50W",        // Используйте класс Rich Edit Control
+				L"",                   // Текст по умолчанию
+				WS_BORDER | WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE,
+				10, 50, 460, 380,      // Размеры и положение
+				hWnd, (HMENU)IDC_EDIT_TAB_START, hInst, nullptr
+			);
 		}
-
-
 	}
 	break;
-	case WM_NOTIFY:
+	case WM_NOTIFY:  // переключение вкладок
 	{
 		NMHDR* pnmhdr = (NMHDR*)lParam;
 		if (pnmhdr->code == TCN_SELCHANGE)
 		{
 			int currentTab = TabCtrl_GetCurSel(tabControl);
-			
-
+		
 			// Скрыть все текстовые поля
 			for (int i = 0; i < tabIndexCounter; i++)
 			{
@@ -165,15 +160,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			// Показать текстовое поле для выбранной вкладки
 			ShowWindow(GetDlgItem(hWnd, IDC_EDIT_TAB_START + currentTab), SW_SHOW);
-			
 		}
-		break;
 	}
+	break;
 	case WM_COMMAND:
 	{
 		int wmId = LOWORD(wParam); // Извлечение идентификатора команды 
 		int wmEvent = HIWORD(wParam); 
-
 		
 		if (wmId == IDC_TABCONTROL) {
 			// Обработка событий переключения вкладок
@@ -187,7 +180,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			// Показать текстовое поле для выбранной вкладки
 			ShowWindow(GetDlgItem(hWnd, IDC_EDIT_TAB_START + currentTab), SW_SHOW);
-
 		}
 		else
 		{
@@ -208,7 +200,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				int controlId = IDC_EDIT_TAB_START + currentTab;
 				HWND textEdit = GetDlgItem(hWnd, controlId);
 
-				static std::wstring fileName(MAX_PATH, L'\0'); // хранение имени файла
+ 				static std::wstring fileName(MAX_PATH, L'\0'); // хранение имени файла
 				OPENFILENAME ofn{}; // структура для настройки диалогового окна сохранения файла
 				ofn.lStructSize = sizeof(OPENFILENAME); // размер структуры
 				ofn.hwndOwner = hWnd; // дескриптор окна-владельца (главного окна приложения)
@@ -297,19 +289,69 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					tie.pszText = tabText;
 					TabCtrl_InsertItem(tabControl, tabIndexCounter - 1, &tie); // вставка новой вкладки
 
-					// Создание нового текстового поля для новой вкладки
-					CreateWindow(L"EDIT", L"", WS_BORDER | WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_LEFT |
-						ES_MULTILINE | ES_AUTOVSCROLL, 10, 50, 460, 380, hWnd,
-						(HMENU)(IDC_EDIT_TAB_START + tabIndexCounter - 1), hInst, NULL);
+					CreateWindow(
+						L"RICHEDIT50W",        
+						L"",                   
+						WS_BORDER | WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE,
+						10, 50, 460, 380,     
+						hWnd, (HMENU)(IDC_EDIT_TAB_START + tabIndexCounter - 1), hInst, nullptr
+					);
+
 					// Переключение на новую вкладку
 					TabCtrl_SetCurSel(tabControl, tabIndexCounter - 1);
 					SendMessage(hWnd, WM_COMMAND, MAKEWPARAM(IDC_TABCONTROL, 0), 0);
+
 			}
 			break;
-			default:
-				return DefWindowProc(hWnd, message, wParam, lParam);
-			}
 
+			case ID_32776: // Обработка выбора заднего фона
+			{
+				int currentTab = TabCtrl_GetCurSel(tabControl);
+				int controlId = IDC_EDIT_TAB_START + currentTab;
+				HWND textEdit = GetDlgItem(hWnd, controlId);
+
+				static COLORREF acrCustClr[16];
+				CHOOSECOLOR cc{ 0 };
+				cc.lStructSize = sizeof(cc);
+				cc.hwndOwner = hWnd;
+				cc.lpCustColors = (LPDWORD)acrCustClr;
+				cc.Flags = CC_FULLOPEN | CC_RGBINIT;
+				if (ChooseColor(&cc)) {
+					SendMessage(textEdit, EM_SETBKGNDCOLOR, FALSE, (LPARAM)cc.rgbResult);
+				}
+			}
+			break;
+			case ID_32777: // Обработка изменения стилей текста
+			{
+				int currentTab = TabCtrl_GetCurSel(tabControl);
+				int controlId = IDC_EDIT_TAB_START + currentTab;
+				HWND textEdit = GetDlgItem(hWnd, controlId);
+
+				CHOOSEFONT cf; // Структура для диалога выбора шрифта
+				LOGFONT lf; // Структура для хранения информации о шрифте
+
+				ZeroMemory(&cf, sizeof(CHOOSEFONT));
+				ZeroMemory(&lf, sizeof(LOGFONT));
+
+				cf.lStructSize = sizeof(CHOOSEFONT);
+				cf.hwndOwner = hWnd;
+				cf.lpLogFont = &lf;
+				cf.Flags = CF_SCREENFONTS | CF_EFFECTS | CF_INITTOLOGFONTSTRUCT;
+				cf.rgbColors = RGB(0, 0, 0); // Начальный цвет текста (черный)
+
+				if (ChooseFont(&cf)) // Отображение диалога выбора шрифта
+				{
+					// Применение выбранного шрифта и цвета текста
+					HFONT hFont = CreateFontIndirect(&lf);
+					SendMessage(textEdit, WM_SETFONT, (WPARAM)hFont, TRUE);
+					SendMessage(textEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cf);
+				}
+			}
+			break;
+
+			default: return DefWindowProc(hWnd, message, wParam, lParam);
+
+			}
 		}
 	}
 	break;
@@ -321,9 +363,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
-		break;
-	default:
-		return DefWindowProc(hWnd, message, wParam, lParam);
+	break;
+	default: return DefWindowProc(hWnd, message, wParam, lParam);
+		
 	}
 	return 0;
 }
