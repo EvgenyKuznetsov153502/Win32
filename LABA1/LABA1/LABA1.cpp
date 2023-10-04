@@ -20,6 +20,7 @@ WCHAR szTitle[MAX_LOADSTRING];                  // Текст строки за�
 WCHAR szWindowClass[MAX_LOADSTRING];            // имя класса главного окна
 HWND tabControl;	                            // дескриптер вкладок в интерфейсе  				
 int tabIndexCounter = 0;						// счетчик вкладок 
+static COLORREF acrCustClr[16];
 
 ATOM                MyRegisterClass(HINSTANCE hInstance);	// будет регистрировать класс окна
 BOOL                InitInstance(HINSTANCE, int);			// будет инициализировать экземпляр приложения.
@@ -310,7 +311,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				int controlId = IDC_EDIT_TAB_START + currentTab;
 				HWND textEdit = GetDlgItem(hWnd, controlId);
 
-				static COLORREF acrCustClr[16];
 				CHOOSECOLOR cc{ 0 };
 				cc.lStructSize = sizeof(cc);
 				cc.hwndOwner = hWnd;
@@ -321,6 +321,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 			}
 			break;
+			
 			case ID_32777: // Обработка изменения стилей текста
 			{
 				int currentTab = TabCtrl_GetCurSel(tabControl);
@@ -345,6 +346,32 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					HFONT hFont = CreateFontIndirect(&lf);
 					SendMessage(textEdit, WM_SETFONT, (WPARAM)hFont, TRUE);
 					SendMessage(textEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cf);
+				}
+			}
+			break;
+			case ID_32778: // Закрыть последнюю вкладку
+			{
+				if (tabIndexCounter > 0)
+				{
+					int currentTabIndex = tabIndexCounter - 1;
+					int lastTabIndex = tabIndexCounter - 1;
+
+					// Удаляем вкладку и связанное с ней текстовое поле
+					TabCtrl_DeleteItem(tabControl, lastTabIndex);
+					DestroyWindow(GetDlgItem(hWnd, IDC_EDIT_TAB_START + lastTabIndex));
+
+					// Обновляем счетчик вкладок
+					tabIndexCounter--;
+
+					// Если закрыта текущая вкладка, обновляем текущую выбранную вкладку
+				
+					if (currentTabIndex >= tabIndexCounter)
+					{
+						currentTabIndex = tabIndexCounter - 1;
+						TabCtrl_SetCurSel(tabControl, currentTabIndex);
+						SendMessage(hWnd, WM_COMMAND, MAKEWPARAM(IDC_TABCONTROL, 0), 0);
+					}
+					
 				}
 			}
 			break;
