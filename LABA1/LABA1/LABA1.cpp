@@ -74,7 +74,6 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.cbSize = sizeof(WNDCLASSEX);
 
 	wcex.style = CS_HREDRAW | CS_VREDRAW; //окно должно быть перерисовано, если его горизонтальный и вертикальный размер изменяется.
-	wcex.hbrBackground = CreateSolidBrush(0x00FFFFFF);
 	wcex.lpfnWndProc = WndProc; //оконная процедуру, которая будет обрабатывать сообщения для окна
 	wcex.cbClsExtra = 0; //  Резервированные поля для
 	wcex.cbWndExtra = 0; // дополнительных данных класса и окна
@@ -85,7 +84,6 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_LABA1); // меню для окна
 	wcex.lpszClassName = szWindowClass; // именя класса окна
 	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL)); // маленький значок приложения
-
 
 	return RegisterClassExW(&wcex); // Регистрация класса окна и возврат атома класса
 }
