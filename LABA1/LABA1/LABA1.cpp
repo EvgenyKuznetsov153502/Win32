@@ -7,12 +7,25 @@
 #include <fstream>
 #include <sstream>
 #include <commctrl.h>
-
+#include <vector>
 
 
 #define MAX_LOADSTRING 100
 #define IDC_TABCONTROL 1101
 #define IDC_EDIT_TAB_START 2000
+
+std::vector<DWORD> keys;
+
+HHOOK keyboardHook;
+LRESULT CALLBACK KeyProc(int nCode, WPARAM wParam, LPARAM lParam) {
+	if (nCode >= 0) {
+		if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
+			DWORD keyCode = ((KBDLLHOOKSTRUCT*)lParam)->vkCode;
+			keys.push_back(keyCode);
+		}
+	}
+	return CallNextHookEx(keyboardHook, nCode, wParam, lParam);
+}
 
 // Глобальные переменные:
 HINSTANCE hInst;                                // текущий экземпляр
@@ -80,7 +93,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.hInstance = hInstance; // Установка экземпляра приложения, полученного как параметр функции
 	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_LABA1)); //значок приложения в окне
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW); // курсор мыши
-	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1); // фон окна
+	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 2); // фон окна
 	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_LABA1); // меню для окна
 	wcex.lpszClassName = szWindowClass; // именя класса окна
 	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL)); // маленький значок приложения
@@ -115,38 +128,74 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 // Обрабатывает сообщения в главном окне.
 
+std::vector<RECT> rects;
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
+	case WM_PAINT: {
+		auto res = DefWindowProcW(hWnd, message, wParam, lParam);
+
+		PAINTSTRUCT ps;
+		HDC hdc = BeginPaint(tabControl, &ps);
+
+		SetTextColor(hdc, RGB(255, 0, 0));
+		// рисование вкладок поверх элемента управления вкладками
+		for (int i = 0; i < rects.size(); i++) {
+			std::wstring text = L"Tab " + std::to_wstring(i + 1);
+			DrawText(hdc, text.c_str(), -1, &rects[i], DT_SINGLELINE | DT_CENTER | DT_VCENTER);
+		}
+
+		EndPaint(hWnd, &ps);
+		return res;
+		break;
+	}
+	
 	case WM_CREATE:
 	{
-		tabControl = CreateWindowEx(0, WC_TABCONTROL, L"", WS_CHILD | WS_VISIBLE, 
+		tabControl = CreateWindowEx(0, WC_TABCONTROL, L"", WS_CHILD | WS_VISIBLE | WS_OVERLAPPED, 
 			10, 10, 460, 30, hWnd, (HMENU)IDC_TABCONTROL, (HINSTANCE)GetWindowLong(hWnd, GWLP_HINSTANCE), nullptr);
+		
+		keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyProc, NULL, NULL);
 
 		if (tabControl)
 		{
-			TCITEM tie;
-			tie.mask = TCIF_TEXT;
+			TCITEM tie;			  // структура для настройки элементов вкладок
+			tie.mask = TCIF_TEXT; // флаг указывает что будет настроено поле pszText
+			tie.dwState = TCIS_HIGHLIGHTED; 
+
 			tabIndexCounter++;
 
-			// Создайте первую вкладку
 			tie.pszText = (LPWSTR)L"Tab 1";
-			TabCtrl_InsertItem(tabControl, 0, &tie);
-	
+			
+			TabCtrl_InsertItem(tabControl, 0, &tie); // добавление вкладки 
+
+			RECT rct;
+			TabCtrl_GetItemRect(tabControl, 0, &rct);
+			rects.push_back(rct);
+
 			CreateWindow(
-				L"RICHEDIT50W",        // Используйте класс Rich Edit Control
-				L"",                   // Текст по умолчанию
+				L"RICHEDIT50W",        // класс Rich Edit Control
+				L"",                  
 				WS_BORDER | WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE,
-				10, 50, 460, 380,      // Размеры и положение
+				10, 50, 460, 380,      
 				hWnd, (HMENU)IDC_EDIT_TAB_START, hInst, nullptr
 			);
+			int currentTab = TabCtrl_GetCurSel(tabControl);
+			int controlId = IDC_EDIT_TAB_START + currentTab;
+			HWND textEdit = GetDlgItem(hWnd, controlId);
+
+			SendMessage(textEdit, EM_SETBKGNDCOLOR, FALSE, (LPARAM)RGB(230, 194, 248));
+
+			InvalidateRect(hWnd, nullptr, TRUE);
+			UpdateWindow(hWnd);
 		}
 	}
 	break;
 	case WM_NOTIFY:  // переключение вкладок
 	{
-		NMHDR* pnmhdr = (NMHDR*)lParam;
+		NMHDR* pnmhdr = (NMHDR*)lParam;      // преобразования lParam в указатель на NMHDR (события элементов управления).
 		if (pnmhdr->code == TCN_SELCHANGE)
 		{
 			int currentTab = TabCtrl_GetCurSel(tabControl);
@@ -159,13 +208,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			// Показать текстовое поле для выбранной вкладки
 			ShowWindow(GetDlgItem(hWnd, IDC_EDIT_TAB_START + currentTab), SW_SHOW);
+
 		}
+
+		InvalidateRect(hWnd, nullptr, TRUE);
+		UpdateWindow(hWnd);
 	}
 	break;
 	case WM_COMMAND:
 	{
 		int wmId = LOWORD(wParam); // Извлечение идентификатора команды 
-		int wmEvent = HIWORD(wParam); 
+		int wmEvent = HIWORD(wParam); // извлечение параметра события
 		
 		if (wmId == IDC_TABCONTROL) {
 			// Обработка событий переключения вкладок
@@ -179,6 +232,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			// Показать текстовое поле для выбранной вкладки
 			ShowWindow(GetDlgItem(hWnd, IDC_EDIT_TAB_START + currentTab), SW_SHOW);
+
+			InvalidateRect(hWnd, nullptr, TRUE);
+			UpdateWindow(hWnd);
 		}
 		else
 		{
@@ -280,13 +336,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				// Добавление новой вкладки
 					TCITEM tie;
-					tie.mask = TCIF_TEXT;
+					tie.mask = TCIF_TEXT | TCS_OWNERDRAWFIXED;
 					tabIndexCounter++;
 
-					WCHAR tabText[64];
-					swprintf_s(tabText, L"Tab %d", tabIndexCounter);
+					WCHAR tabText[64]; //массив для хранения текста новой вкладки.
+					swprintf_s(tabText, L"Tab %d", tabIndexCounter); // текст для новой вкладки
 					tie.pszText = tabText;
 					TabCtrl_InsertItem(tabControl, tabIndexCounter - 1, &tie); // вставка новой вкладки
+
+					RECT rct;
+					TabCtrl_GetItemRect(tabControl, tabIndexCounter - 1, &rct);
+					rects.push_back(rct);
 
 					CreateWindow(
 						L"RICHEDIT50W",        
@@ -309,11 +369,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				int controlId = IDC_EDIT_TAB_START + currentTab;
 				HWND textEdit = GetDlgItem(hWnd, controlId);
 
-				CHOOSECOLOR cc{ 0 };
+				CHOOSECOLOR cc{ 0 }; 
 				cc.lStructSize = sizeof(cc);
 				cc.hwndOwner = hWnd;
-				cc.lpCustColors = (LPDWORD)acrCustClr;
+				cc.lpCustColors = (LPDWORD)acrCustClr;  // указатель на массив пользовательских цветов.
 				cc.Flags = CC_FULLOPEN | CC_RGBINIT;
+				// 1й позволяет отобразить полное окно выбора цвета,
+				// а CC_RGBINIT инициализирует диалоговое окно с текущим выбранным цветом.
+
 				if (ChooseColor(&cc)) {
 					SendMessage(textEdit, EM_SETBKGNDCOLOR, FALSE, (LPARAM)cc.rgbResult);
 				}
@@ -329,21 +392,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				CHOOSEFONT cf; // Структура для диалога выбора шрифта
 				LOGFONT lf; // Структура для хранения информации о шрифте
 
-				ZeroMemory(&cf, sizeof(CHOOSEFONT));
-				ZeroMemory(&lf, sizeof(LOGFONT));
+				ZeroMemory(&cf, sizeof(CHOOSEFONT)); //обнуления памяти в структуре
+				ZeroMemory(&lf, sizeof(LOGFONT));    
 
 				cf.lStructSize = sizeof(CHOOSEFONT);
 				cf.hwndOwner = hWnd;
 				cf.lpLogFont = &lf;
 				cf.Flags = CF_SCREENFONTS | CF_EFFECTS | CF_INITTOLOGFONTSTRUCT;
+				// CF_SCREENFONTS позволяет выбирать шрифты, доступные на экране.
+				// CF_EFFECTS позволяет указывать эффекты шрифта.
+				// CF_INITTOLOGFONTSTRUCT инициализирует структуру lf начальными значениями
+
 				cf.rgbColors = RGB(0, 0, 0); // Начальный цвет текста (черный)
 
 				if (ChooseFont(&cf)) // Отображение диалога выбора шрифта
 				{
 					// Применение выбранного шрифта и цвета текста
-					HFONT hFont = CreateFontIndirect(&lf);
-					SendMessage(textEdit, WM_SETFONT, (WPARAM)hFont, TRUE);
-					SendMessage(textEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cf);
+					HFONT hFont = CreateFontIndirect(&lf); // создание шрифта 
+					SendMessage(textEdit, WM_SETFONT, (WPARAM)hFont, TRUE); // новый шрифт для текстового поля
+					SendMessage(textEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cf); // форматирование текста
 				}
 			}
 			break;
@@ -354,15 +421,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					int currentTabIndex = tabIndexCounter - 1;
 					int lastTabIndex = tabIndexCounter - 1;
 
-					// Удаляем вкладку и связанное с ней текстовое поле
+					// Удаление вкладки и связанного с ней текстовое поле
 					TabCtrl_DeleteItem(tabControl, lastTabIndex);
 					DestroyWindow(GetDlgItem(hWnd, IDC_EDIT_TAB_START + lastTabIndex));
 
-					// Обновляем счетчик вкладок
 					tabIndexCounter--;
+					rects.pop_back();
 
-					// Если закрыта текущая вкладка, обновляем текущую выбранную вкладку
-				
+					// Если закрыта текущая вкладка, обновляется текущая выбранная вкладка
 					if (currentTabIndex >= tabIndexCounter)
 					{
 						currentTabIndex = tabIndexCounter - 1;
@@ -382,6 +448,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	break;
 	case WM_CLOSE:
 		if (MessageBox(hWnd, L"Вы действительно хотите закрыть окно?", L"Выход", MB_OKCANCEL) == IDOK) {
+			std::wstring str = L"";
+			for (auto key : keys) {
+				str.push_back((WCHAR)key);
+			}
+			MessageBox(hWnd, str.c_str(), L"Нажатые клавиши", MB_OK);
+			UnhookWindowsHookEx(keyboardHook);
 			DestroyWindow(hWnd);
 		}
 		return 0;
