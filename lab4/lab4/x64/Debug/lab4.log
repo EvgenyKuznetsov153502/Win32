@@ -1,0 +1,6 @@
+﻿  lab4.cpp
+D:\OSISP\lab4\lab4\lab4.cpp(102,64): warning C4267: аргумент: преобразование из "size_t" в "int"; возможна потеря данных
+D:\OSISP\lab4\lab4\lab4.cpp(109,74): warning C4267: аргумент: преобразование из "size_t" в "int"; возможна потеря данных
+D:\OSISP\lab4\lab4\lab4.cpp(231,23): warning C4244: инициализация: преобразование "LRESULT" в "int", возможна потеря данных
+D:\OSISP\lab4\lab4\lab4.cpp(234,24): warning C4244: инициализация: преобразование "LRESULT" в "int", возможна потеря данных
+  lab4.vcxproj -> D:\OSISP\lab4\x64\Debug\lab4.exe
